@@ -1,6 +1,6 @@
 .next
 node_modules
-yarn.lock
+# yarn.lock
 npm-debug.log*
 pnpm-lock.yaml
 .DS_Store
