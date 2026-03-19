@@ -1,3 +1,5 @@
+import type { NextRequest } from "next/server";
+
 const paletteMap = {
   ember: {
     bg1: "#241307",
@@ -97,11 +99,19 @@ const paletteMap = {
   },
 };
 
-function numericSeed(value) {
+function numericSeed(value: string) {
   return String(value).split("").reduce((total, char, index) => total + char.charCodeAt(0) * (index + 1), 0);
 }
 
-function buildSvg({ slug, widthUnits, heightUnits, palette, seed }) {
+type SvgOptions = {
+  slug: string;
+  widthUnits: number;
+  heightUnits: number;
+  palette: string;
+  seed: string;
+};
+
+function buildSvg({ slug, widthUnits, heightUnits, palette, seed }: SvgOptions) {
   const colors = paletteMap[palette] ?? paletteMap.ember;
   const base = numericSeed(`${slug}-${seed}-${widthUnits}-${heightUnits}`);
   const width = widthUnits * 384;
@@ -146,7 +156,11 @@ function buildSvg({ slug, widthUnits, heightUnits, palette, seed }) {
   `.trim();
 }
 
-export async function GET(request, { params }) {
+type RouteContext = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function GET(request: NextRequest, { params }: RouteContext) {
   const searchParams = request.nextUrl.searchParams;
   const { slug } = await params;
   const palette = searchParams.get("palette") ?? "ember";
