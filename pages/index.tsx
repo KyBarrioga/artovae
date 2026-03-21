@@ -51,7 +51,15 @@ function resolveImageSource(value: string) {
     return value;
   }
 
-  return `/static/imgs/${value}`;
+  if (value.startsWith("/")) {
+    return value;
+  }
+
+  if (value.startsWith("img/")) {
+    return `/static/${value}`;
+  }
+
+  return `/static/img/${value}`;
 }
 
 const generatedGallery = imageFiles.slice(0, DESKTOP_CAPACITY).map((filename, index) => {

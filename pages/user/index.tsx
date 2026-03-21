@@ -46,7 +46,15 @@ export default function UserPage() {
       return value;
     }
 
-    return `/static/imgs/${value}`;
+    if (value.startsWith("/")) {
+      return value;
+    }
+
+    if (value.startsWith("img/")) {
+      return `/static/${value}`;
+    }
+
+    return `/static/img/${value}`;
   }
 
   const addGridImg = () => {
@@ -88,7 +96,7 @@ export default function UserPage() {
           x = items.length % 2 === 0 ? 0 : 4;;
           y = 0;
           width = 4;
-          height = 2;
+          height = 1;
         }
 
         currentLayout.push({
