@@ -1,160 +1,243 @@
 "use client";
 
-import Image from "next/image";
-import { Responsive, useContainerWidth } from "react-grid-layout";
-import { useState } from "react";
-import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
-import { images } from "static/costants";
+import { memo, useEffect, useMemo, useState } from "react";
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  MeasuringStrategy,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { tiles } from "static/costants";
 
-const imageFiles = images;
+const GRID_COLUMNS = 8;
+const GRID_ROWS = 4;
+const GRID_CAPACITY = GRID_COLUMNS * GRID_ROWS;
+const imageFiles = tiles;
+const USER2_LAYOUT_STORAGE_KEY = "picsal:user2:grid-order";
+const TILE_SIZE = 140;
 
-type ImageProperties = {
-  key: string;
-  class: string;
+type GridItem = {
+  id: string;
+  src: string;
 };
 
-type LayoutItem = {
-  i: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  isResizable: boolean;
-};
-
-type Layouts = Record<string, LayoutItem[]>;
-
-export default function UserPage() {
-  const [items, setItems] = useState<ImageProperties[]>([]);
-  const [layouts, setLayouts] = useState<Layouts>({
-    lg: [],
-    md: [],
-    sm: [],
-    xs: [],
-  });
-
-  function resolveImageSource(value: string) {
-    if (/^https?:\/\/imgur\.com\//i.test(value)) {
-      const match = value.match(/imgur\.com\/([a-zA-Z0-9]+)/i);
-      if (match) {
-        return `https://i.imgur.com/${match[1]}.jpg`;
-      }
+function resolveImageSource(value: string) {
+  if (/^https?:\/\/imgur\.com\//i.test(value)) {
+    const match = value.match(/imgur\.com\/([a-zA-Z0-9]+)/i);
+    if (match) {
+      return `https://i.imgur.com/${match[1]}.jpg`;
     }
-
-    if (/^https?:\/\//i.test(value)) {
-      return value;
-    }
-
-    if (value.startsWith("/")) {
-      return value;
-    }
-
-    if (value.startsWith("img/")) {
-      return `/static/${value}`;
-    }
-
-    return `/static/img/${value}`;
   }
 
-  const addGridImg = () => {
-    const newKey = `item-${Date.now()}`;
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
 
-    setItems((prev) => [
-      ...prev,
-      {
-        key: newKey,
-        class: "bg-white text-black",
-      },
-    ]);
+  if (value.startsWith("/")) {
+    return value;
+  }
 
-    setLayouts((prevLayouts) => {
-      const newLayouts: Layouts = { ...prevLayouts };
+  if (value.startsWith("img/")) {
+    return `/static/${value}`;
+  }
 
-      Object.keys(newLayouts).forEach((breakpoint) => {
-        const currentLayout = [...newLayouts[breakpoint]];
+  return `/static/img/${value}`;
+}
 
-        let width = 2;
-        let height = 2;
-        let x = 4;
-        let y = 0;
+const DEFAULT_ITEMS: GridItem[] = imageFiles.slice(0, GRID_CAPACITY).map((image, index) => ({
+  id: `tile-${index + 1}`,
+  src: resolveImageSource(image),
+}));
 
-        if (breakpoint === "lg") {
-          x = Math.ceil(items.length * 2) % 8;
-          y = Math.floor(items.length / 4);
-        } else if (breakpoint === "md") {
-          x = Math.ceil(items.length * 2) % 8;
-          y = Math.floor(items.length / 4);
-          width = 2;
-          height = 1;
-        } else if (breakpoint === "sm") {
-          x = items.length % 2 === 0 ? 0 : 4;
-          y = Math.ceil(items.length * 2);
-          width = 4;
-          height = 2;
-        } else if (breakpoint === "xs") {
-          x = items.length % 2 === 0 ? 0 : 4;;
-          y = 0;
-          width = 4;
-          height = 1;
-        }
+function TileCard({
+  item,
+  isDragging = false,
+}: {
+  item: GridItem;
+  isDragging?: boolean;
+}) {
+  return (
+    <div
+      className={`relative overflow-hidden bg-panel ${isDragging ? "opacity-90" : ""}`}
+      style={{ width: TILE_SIZE, height: TILE_SIZE }}
+    >
+      <img
+        src={item.src}
+        alt=""
+        draggable={false}
+        className="h-full w-full object-cover select-none"
+      />
+    </div>
+  );
+}
 
-        currentLayout.push({
-          i: newKey,
-          x,
-          y,
-          w: width,
-          h: height,
-          isResizable: false,
-        });
+const SortableTile = memo(function SortableTile({
+  item,
+}: {
+  item: GridItem;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
 
-        newLayouts[breakpoint] = currentLayout;
-      });
-
-      return newLayouts;
-    });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 0,
+    willChange: "transform",
+    touchAction: "none",
   };
 
-  function MyResponsiveGrid() {
-    const { width, containerRef, mounted } = useContainerWidth();
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="block cursor-grab active:cursor-grabbing"
+    >
+      <TileCard item={item} isDragging={isDragging} />
+    </div>
+  );
+});
 
-    return (
-      <div ref={containerRef}>
-        {mounted ? (
-          <Responsive
-            layouts={layouts}
-            width={width}
-            cols={{ lg: 8, md: 8, sm: 8, xs: 8, xxs: 8 }}
-            margin={[0, 0]}
-          >
-            {items.map((item, index) => (
-              <div className={item.class} key={item.key}>
-                {item.key}
-                <Image
-                    src={resolveImageSource(imageFiles[index])}
-                    alt=""
-                    // alt={`${item.title} by ${item.artist}`}
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1440px) 16vw, 12vw"
-                    className="object-cover transition duration-300 group-hover:scale-[1.015]"
-                    // priority={item.id <= 10}
-                    // unoptimized
-                  />
-              </div>
-            ))}
-          </Responsive>
-        ) : null}
-      </div>
+export default function UserTwoPage() {
+  const [items, setItems] = useState<GridItem[]>(DEFAULT_ITEMS);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const itemIds = useMemo(() => items.map((item) => item.id), [items]);
+  const activeItem = useMemo(
+    () => items.find((item) => item.id === activeId) ?? null,
+    [activeId, items]
+  );
+
+  useEffect(() => {
+    const savedOrder = window.localStorage.getItem(USER2_LAYOUT_STORAGE_KEY);
+
+    if (!savedOrder) {
+      return;
+    }
+
+    try {
+      const orderedIds = JSON.parse(savedOrder) as string[];
+      const itemsById = new Map(DEFAULT_ITEMS.map((item) => [item.id, item]));
+      const restoredItems = orderedIds
+        .map((id) => itemsById.get(id))
+        .filter((item): item is GridItem => Boolean(item));
+      const missingItems = DEFAULT_ITEMS.filter(
+        (item) => !restoredItems.some((restoredItem) => restoredItem.id === item.id)
+      );
+
+      if (restoredItems.length > 0) {
+        setItems([...restoredItems, ...missingItems]);
+      }
+    } catch {
+      window.localStorage.removeItem(USER2_LAYOUT_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      USER2_LAYOUT_STORAGE_KEY,
+      JSON.stringify(items.map((item) => item.id))
     );
+  }, [items]);
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id));
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    setItems((currentItems) => {
+      const oldIndex = currentItems.findIndex((item) => item.id === active.id);
+      const newIndex = currentItems.findIndex((item) => item.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) {
+        return currentItems;
+      }
+
+      return arrayMove(currentItems, oldIndex, newIndex);
+    });
+  }
+
+  function handleDragCancel() {
+    setActiveId(null);
   }
 
   return (
-    <main style={{ padding: "2rem" }}>
-      <button onClick={addGridImg} className="bg-white text-[#000000]">
-        Add Grid
-      </button>
-      <div className="w-full h-full">
-        <MyResponsiveGrid />
+    <main className="min-h-[calc(100vh-<header-height>px)] px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-[1400px]">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <p className="text-sm text-stone-400">Drag tiles to reorder the grid.</p>
+        </div>
+
+        <div className="p-0">
+          <div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              measuring={{
+                droppable: {
+                  strategy: MeasuringStrategy.BeforeDragging,
+                },
+              }}
+              autoScroll={false}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
+            >
+              <SortableContext items={itemIds} strategy={rectSortingStrategy}>
+                <div
+                  className="grid justify-center gap-0"
+                  style={{ gridTemplateColumns: `repeat(auto-fit, ${TILE_SIZE}px)` }}
+                >
+                  {items.map((item) => (
+                    <SortableTile key={item.id} item={item} />
+                  ))}
+                </div>
+              </SortableContext>
+              <DragOverlay dropAnimation={null}>
+                {activeItem ? (
+                  <div style={{ width: TILE_SIZE, height: TILE_SIZE }}>
+                    <TileCard item={activeItem} isDragging />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </div>
+        </div>
       </div>
     </main>
   );

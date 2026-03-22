@@ -4,6 +4,7 @@ import Image from "next/image";
 import { images } from "static/costants";
 import { useEffect, useMemo, useState } from "react";
 import { useMenuStore } from "store/useMenuStore";
+import Header from "layouts/header";
 
 const sections = ["For You", "Following", "Trending"];
 const imageFiles = images;
@@ -302,6 +303,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen">
+      <Header />
       <div className="mx-auto max-w-[1920px] px-2 sm:px-3 lg:px-4">
         {/* <section className="mb-5 rounded-[32px] border border-amber-400/15 bg-gradient-to-br from-[#1a130a] via-[#0d0d0d] to-[#080808] p-6 shadow-glow sm:p-8">
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">

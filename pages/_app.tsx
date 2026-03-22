@@ -13,7 +13,6 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="description" content="A concept front-end for a visual art discovery platform." />
         <link rel="icon" href="static/logo.png" />
       </Head>
-      <Header />
       <Component {...pageProps} />
     </>
   );

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { useMenuStore } from "store/useMenuStore";
 
 export default function Header() {
@@ -12,7 +13,7 @@ export default function Header() {
               href="#"
               className="flex items-center gap-3 px-4 py-2 text-amber-200"
             >
-              <Image src={"/static/logo.png"} alt="Pixhhal Logo" width={36} height={36}></Image>
+              <Image src={"/static/logo.png"} alt="Picsal Logo" width={36} height={36}></Image>
               <span className="text-lg font-semibold uppercase tracking-[0.18em]">Picsal</span>
             </a>
             <nav className="hidden flex-wrap items-center gap-1 text-sm text-stone-300 xl:flex">
@@ -71,9 +72,12 @@ export default function Header() {
               />
             </label>
             <div className="flex items-center gap-3 self-end sm:self-auto">
-              <button className="rounded-full px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/5">
+              <Link
+                href="/login"
+                className="rounded-full px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/5"
+              >
                 Log in
-              </button>
+              </Link>
               <select
                 defaultValue="EN"
                 className="rounded-full border border-line bg-panelAlt px-4 py-2 text-sm text-stone-100 outline-none transition hover:border-amber-400/40"
@@ -123,9 +127,13 @@ export default function Header() {
               </nav>
 
               <div className="flex items-center justify-between gap-3">
-                <button className="rounded-full px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/5">
+                <Link
+                  href="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="rounded-full px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/5"
+                >
                   Log in
-                </button>
+                </Link>
                 <select
                   defaultValue="EN"
                   className="rounded-full border border-line bg-panelAlt px-4 py-2 text-sm text-stone-100 outline-none transition hover:border-amber-400/40"
