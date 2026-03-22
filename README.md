@@ -9,4 +9,9 @@ yarn install
 yarn dev
 ```
 
-Then open `http://localhost:3000` or `artovae.vercel.app`
+Then open `http://localhost:3000` or `picsalbeta.vercel.app`
+
+Pages Directory
+- /
+- /login
+- /user
