@@ -2,18 +2,64 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { supabase } from "lib/supabaseClient";
 
 const artwork = "/static/img/login.jpg";
+const passwordRule = /^(?=.*\d).{8,}$/;
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);
   const [hasConsented, setHasConsented] = useState(false);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  function handleRequestAccess(event: FormEvent<HTMLFormElement>) {
+  const passwordIsValid = passwordRule.test(password);
+  const passwordsMatch = password === confirmPassword;
+
+  function resetFeedback() {
+    setErrorMessage("");
+    setSuccessMessage("");
+    setIsSubmitted(false);
+  }
+
+  async function handleRequestAccess(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    resetFeedback();
+
+    if (!passwordIsValid) {
+      setErrorMessage("Password must be at least 8 characters long and include at least 1 number.");
+      return;
+    }
+
+    if (!passwordsMatch) {
+      setErrorMessage("Confirm password must match your password.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    setIsSubmitting(false);
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
     setIsSubmitted(true);
+    setSuccessMessage("Account created. Check your email to confirm your signup before logging in.");
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
   }
 
   return (
@@ -30,26 +76,26 @@ export default function SignupPage() {
         <section className="flex w-full items-center justify-center bg-[#090909] px-6 py-10 sm:px-10 lg:w-1/2 lg:px-14 xl:px-20">
           <div className="w-full max-w-[460px]">
             <p className="text-xs uppercase tracking-[0.28em] text-amber-300">
-              Request beta access
+              Create account
             </p>
             <h1 className="mt-4 text-4xl font-semibold text-stone-50 sm:text-5xl">
-              Join Picsal early.
+              Join Picsal.
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-7 text-stone-400">
-              We are opening the platform slowly while we shape the product with a smaller testing group.
+              Create your account to start building your space on Picsal.
             </p>
 
             <div className="mt-8 flex items-center gap-3 text-xs uppercase tracking-[0.24em] text-stone-500">
               <span className={step === 1 ? "text-amber-300" : ""}>01 Consent</span>
               <span className="h-px flex-1 bg-white/10" />
-              <span className={step === 2 ? "text-amber-300" : ""}>02 Request</span>
+              <span className={step === 2 ? "text-amber-300" : ""}>02 Sign Up</span>
             </div>
 
             {step === 1 ? (
               <div className="mt-10 space-y-6">
                 <div className="rounded-2xl border border-line bg-[#111111] p-6">
                   <h2 className="text-lg font-semibold text-stone-100">
-                    Before you request access
+                    Before you sign up
                   </h2>
                   <p className="mt-4 text-sm leading-7 text-stone-400">
                     Picsal is currently in beta. Some functions may be broken, unfinished, or still in progress, and
@@ -69,7 +115,7 @@ export default function SignupPage() {
                     className="mt-1 h-4 w-4 border border-line bg-black accent-amber-400"
                   />
                   <span>
-                    I understand this is a work in progress beta and I want to request early access anyway.
+                    I understand this is a work in progress beta and I want to create an account anyway.
                   </span>
                 </label>
 
@@ -92,18 +138,69 @@ export default function SignupPage() {
                     id="request-email"
                     type="email"
                     value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    onChange={(event) => {
+                      setEmail(event.target.value);
+                      resetFeedback();
+                    }}
                     placeholder="name@example.com"
                     required
                     className="w-full border border-line bg-[#111111] px-4 py-3 text-sm text-stone-100 outline-none transition focus:border-amber-400/50"
                   />
                 </div>
 
+                <div>
+                  <label htmlFor="signup-password" className="mb-2 block text-sm font-medium text-stone-200">
+                    Password
+                  </label>
+                  <input
+                    id="signup-password"
+                    type="password"
+                    value={password}
+                    onChange={(event) => {
+                      setPassword(event.target.value);
+                      resetFeedback();
+                    }}
+                    placeholder="Create a password"
+                    required
+                    minLength={8}
+                    className="w-full border border-line bg-[#111111] px-4 py-3 text-sm text-stone-100 outline-none transition focus:border-amber-400/50"
+                  />
+                  <p className="mt-2 text-xs leading-6 text-stone-500">
+                    Must be at least 8 characters and include at least 1 number.
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="signup-confirm-password" className="mb-2 block text-sm font-medium text-stone-200">
+                    Confirm password
+                  </label>
+                  <input
+                    id="signup-confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => {
+                      setConfirmPassword(event.target.value);
+                      resetFeedback();
+                    }}
+                    placeholder="Re-enter your password"
+                    required
+                    minLength={8}
+                    className="w-full border border-line bg-[#111111] px-4 py-3 text-sm text-stone-100 outline-none transition focus:border-amber-400/50"
+                  />
+                </div>
+
+                {errorMessage ? (
+                  <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-4 text-sm leading-7 text-rose-100">
+                    {errorMessage}
+                  </div>
+                ) : null}
+
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className="w-full rounded-xl border border-amber-400/35 bg-[#17120a] px-4 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-amber-100 transition hover:border-amber-300/60 hover:bg-[#21180b]"
                 >
-                  Request Access
+                  {isSubmitting ? "Creating Account..." : "Create Account"}
                 </button>
 
                 <button
@@ -116,7 +213,7 @@ export default function SignupPage() {
 
                 {isSubmitted ? (
                   <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-4 text-sm leading-7 text-amber-100">
-                    Thanks. Your beta access request has been received and we will reach out if a spot opens up.
+                    {successMessage}
                   </div>
                 ) : null}
               </form>
