@@ -1,9 +1,62 @@
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import { createClient } from "lib/createBrowserClient";
 import { useMenuStore } from "store/useMenuStore";
 
 export default function Header() {
     const { isMobileMenuOpen, setIsMobileMenuOpen } = useMenuStore();
+    const router = useRouter();
+    const [supabase] = useState(() => createClient());
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isSigningOut, setIsSigningOut] = useState(false);
+
+    useEffect(() => {
+      let isMounted = true;
+
+      async function loadUser() {
+        const { data } = await supabase.auth.getUser();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setIsAuthenticated(Boolean(data.user));
+      }
+
+      void loadUser();
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setIsAuthenticated(Boolean(session?.user));
+      });
+
+      return () => {
+        isMounted = false;
+        subscription.unsubscribe();
+      };
+    }, [supabase]);
+
+    async function handleLogout() {
+      setIsSigningOut(true);
+      await supabase.auth.signOut();
+      setIsMobileMenuOpen(false);
+      await router.push("/login");
+      setIsSigningOut(false);
+    }
+
+    console.log(supabase.auth.getUser())
+
+    const profileLinkClass =
+      "flex h-11 w-11 items-center justify-center rounded-full border border-amber-400/25 bg-[#17120a] text-sm font-semibold uppercase tracking-[0.18em] text-amber-100 transition hover:border-amber-300/60 hover:bg-[#21180b]";
+    const logoutButtonClass =
+      "rounded-full px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:text-stone-500";
 
     return (
         <header className="sticky top-0 z-20 mb-6 border border-line bg-panel/90 shadow-glow backdrop-blur xl:px-6">
@@ -72,12 +125,28 @@ export default function Header() {
               />
             </label>
             <div className="flex items-center gap-3 self-end sm:self-auto">
-              <Link
-                href="/login"
-                className="rounded-full px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/5"
-              >
-                Log in
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link href="/user" className={profileLinkClass} aria-label="Go to your profile">
+                    You
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={isSigningOut}
+                    className={logoutButtonClass}
+                  >
+                    {isSigningOut ? "Logging out..." : "Log out"}
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href="/login"
+                  className="rounded-full px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/5"
+                >
+                  Log in
+                </Link>
+              )}
               <select
                 defaultValue="EN"
                 className="rounded-full border border-line bg-panelAlt px-4 py-2 text-sm text-stone-100 outline-none transition hover:border-amber-400/40"
@@ -127,13 +196,34 @@ export default function Header() {
               </nav>
 
               <div className="flex items-center justify-between gap-3">
-                <Link
-                  href="/login"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="rounded-full px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/5"
-                >
-                  Log in
-                </Link>
+                {isAuthenticated ? (
+                  <>
+                    <Link
+                      href="/user"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={profileLinkClass}
+                      aria-label="Go to your profile"
+                    >
+                      You
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      disabled={isSigningOut}
+                      className={logoutButtonClass}
+                    >
+                      {isSigningOut ? "Logging out..." : "Log out"}
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    href="/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="rounded-full px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/5"
+                  >
+                    Log in
+                  </Link>
+                )}
                 <select
                   defaultValue="EN"
                   className="rounded-full border border-line bg-panelAlt px-4 py-2 text-sm text-stone-100 outline-none transition hover:border-amber-400/40"
