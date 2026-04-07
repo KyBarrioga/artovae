@@ -1,5 +1,3 @@
-"use client";
-
 import { memo, useEffect, useMemo, useState } from "react";
 import {
   closestCenter,

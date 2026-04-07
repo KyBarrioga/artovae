@@ -1,10 +1,20 @@
-"use client";
-
 import Image from "next/image";
 import { images } from "static/costants";
 import { useEffect, useMemo, useState } from "react";
 import { useMenuStore } from "store/useMenuStore";
 import Header from "layouts/header";
+
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 const sections = ["For You", "Following", "Trending"];
 const imageFiles = images;
@@ -240,6 +250,7 @@ export default function Home() {
   const [rows, setRows] = useState(DESKTOP_ROWS);
   const [layoutSeed, setLayoutSeed] = useState(1);
   const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH_SIZE);
+  const [noticeOpen, setNoticeOpen] = useState(true)
 
   const visibleItems = useMemo(() => {
     const sectionItems = generatedGallery.filter((item) => item.section === activeSection);
@@ -305,6 +316,30 @@ export default function Home() {
     <main className="min-h-screen">
       <Header />
       <div className="mx-auto max-w-[1920px] px-2 sm:px-3 lg:px-4">
+        <Dialog open={noticeOpen} onOpenChange={setNoticeOpen}>
+
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Picsal Notice!</DialogTitle>
+              <DialogDescription>
+                This website is currently under active development.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="-mx-4 no-scrollbar max-h-[50vh] overflow-y-auto px-4">
+              <p className="mb-4 leading-normal">
+                While it is available to use, some features may be incomplete or temporarily unavailable.
+                We appreciate your patience as we work to improve and finalize the experience,
+                and we truly appreciate you reaching out with any feedback.
+              </p>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Close</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* <section className="mb-5 rounded-[32px] border border-amber-400/15 bg-gradient-to-br from-[#1a130a] via-[#0d0d0d] to-[#080808] p-6 shadow-glow sm:p-8">
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
             <div>
@@ -365,7 +400,7 @@ export default function Home() {
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1440px) 16vw, 12vw"
                     className="object-cover transition duration-300 group-hover:scale-[1.015]"
                     priority={item.id <= 10}
-                    // unoptimized
+                  // unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
                   <div

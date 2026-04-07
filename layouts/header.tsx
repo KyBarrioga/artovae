@@ -145,15 +145,15 @@ export default function Header() {
                   Log in
                 </Link>
               )}
-              <select
+              {/* <select
                 defaultValue="EN"
-                className="rounded-full border border-line bg-panelAlt px-4 py-2 text-sm text-stone-100 outline-none transition hover:border-amber-400/40"
+                className="rounded-full border border-line bg-panel-alt px-4 py-2 text-sm text-stone-100 outline-none transition hover:border-amber-400/40"
                 aria-label="Language"
               >
                 <option value="EN">EN</option>
                 <option value="JP">JP</option>
                 <option value="CN">CN</option>
-                </select>
+                </select> */}
               </div>
             </div>
 
@@ -222,15 +222,15 @@ export default function Header() {
                     Log in
                   </Link>
                 )}
-                <select
+                {/* <select
                   defaultValue="EN"
-                  className="rounded-full border border-line bg-panelAlt px-4 py-2 text-sm text-stone-100 outline-none transition hover:border-amber-400/40"
+                  className="rounded-full border border-line bg-panel-alt px-4 py-2 text-sm text-stone-100 outline-none transition hover:border-amber-400/40"
                   aria-label="Language"
                 >
-                  <option value="EN">EN</option>
+                  <option value="EN">ENss</option>
                   <option value="JP">JP</option>
                   <option value="CN">CN</option>
-                </select>
+                </select> */}
               </div>
             </div>
           ) : null}

@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { SubmitEvent, useState } from "react";
 import { useRouter } from "next/router";
