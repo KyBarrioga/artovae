@@ -4,7 +4,7 @@ import { createClient } from "lib/createBrowserClient";
 const supabase = createClient();
 
 export const api = axios.create({
-  baseURL: process.env.PICSAL_API_URL,
+  baseURL: "",
 });
 
 api.interceptors.request.use(async (config) => {

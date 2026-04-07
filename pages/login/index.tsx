@@ -35,7 +35,7 @@ export default function LoginPage() {
       return;
     }
 
-    const response = await api.get("api/user/me");
+    const response = await api.get("/api/user/me");
     useUserStore.getState().setUser(response.data);
     const user = useUserStore.getState().user;
     console.log("Trial", user);
