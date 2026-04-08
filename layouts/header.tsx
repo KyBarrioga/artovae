@@ -95,7 +95,7 @@ export default function Header() {
                 key={item}
                 href="#"
                 className="rounded-full px-4 py-2 transition hover:bg-white/5 hover:text-white"
-                onClick={()=>showToastWarning(item)}
+                onClick={() => showToastWarning(item)}
               >
                 {item}
               </a>
@@ -219,12 +219,42 @@ export default function Header() {
                   </button> */}
               </>
             ) : (
-              <Link
-                href="/login"
-                className="rounded-full px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/5"
-              >
-                Log in
-              </Link>
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-full px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/5"
+                >
+                  Log in
+                </Link>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <EllipsisVertical className="text-gray-100" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-30" align="start">
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem onClick={() => showToastWarning("About")}>
+                        About
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => showToastWarning("FAQ")}>
+                        FAQ
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => showToastWarning("Feedback")}>
+                        Feedback
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => showToastWarning("Contact")}>
+                        Contact
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem onClick={() => showToastWarning("GitHub")}>GitHub</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => showToastWarning("Support")}>Support</DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             )}
             {/* <select
                 defaultValue="EN"
