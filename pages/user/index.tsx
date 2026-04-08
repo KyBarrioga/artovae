@@ -21,6 +21,14 @@ import { tiles } from "static/costants";
 import Header from "layouts/header";
 import { api } from "lib/apiClient";
 import { useUserStore } from "store/useUserStore";
+import { Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  ButtonGroup,
+  ButtonGroupSeparator,
+} from "@/components/ui/button-group"
+import { toast } from "sonner"
+import { Skeleton } from "@/components/ui/skeleton";
 
 const GRID_COLUMNS = 8;
 const GRID_ROWS = 4;
@@ -165,10 +173,10 @@ export default function UserTwoPage() {
   const description = user?.profile.description?.trim() || "";
   const joinedLabel = user?.profile.created_at
     ? new Date(user.profile.created_at).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
     : "";
   const profileImage = user?.profile.profile_picture || DEFAULT_PROFILE_IMAGE;
 
@@ -270,6 +278,10 @@ export default function UserTwoPage() {
     setActiveId(null);
   }
 
+  function showToastWarning(feature: string) {
+    return toast.warning(`Unavailable, ${feature} feature still in progress.`)
+  }
+
   return (
     <main>
       <Header />
@@ -291,7 +303,7 @@ export default function UserTwoPage() {
 
                   <div className="min-w-0 pt-1 text-center sm:text-left">
                     <h1 className="text-[15px] font-semibold leading-tight text-stone-50 sm:text-[24px]">
-                      {displayName || (isProfileLoading ? "Loading..." : "Profile")}
+                      {displayName || (isProfileLoading ? <Skeleton className="mt-[10px] h-[30px] w-[150px] rounded-full mx-auto sm:mx-0" /> : "Profile")}
                     </h1>
                     {handle ? (
                       <p className="mt-1 text-sm text-stone-500 sm:text-base">{handle}</p>
@@ -305,20 +317,26 @@ export default function UserTwoPage() {
                       </div>
                     ) : null}
                     {!description && !email && !joinedLabel && isProfileLoading ? (
-                      <p className="mt-4 text-sm text-stone-500">Loading profile details...</p>
+                      (
+                        <div>
+                          <Skeleton className="mt-[12px] h-[20px] w-[200px] rounded-full mx-auto sm:mx-0" />
+                          <Skeleton className="mt-[12px] h-[20px] w-[180px] rounded-full mx-auto sm:mx-0" />
+                        </div>
+                      )
                     ) : null}
 
                   </div>
                 </div>
 
-                <div className="flex justify-center sm:justify-end">
-                  <button
-                    type="button"
-                    className="rounded-full mt-1 bg-[#1d9bf0] px-5 py-1 text-sm font-medium text-white transition hover:bg-[#1a8cd8] sm:text-base"
-                  >
-                    Edit profile
-                  </button>
-                </div>
+                <div className="flex justify-center sm:justify-end items-center mt-2">
+                <ButtonGroup>
+                  <Button variant="secondary" onClick={()=>showToastWarning("Edit Profile")}>Edit Profile</Button>
+                  <ButtonGroupSeparator />
+                  <Button size="icon" variant="secondary" onClick={()=>showToastWarning("Post")}>
+                    <Plus />
+                  </Button>
+                </ButtonGroup>
+              </div>
               </div>
 
               <div className="mt-10 flex items-center justify-center gap-10 text-sm text-stone-500 sm:gap-16 sm:text-base">
@@ -328,19 +346,19 @@ export default function UserTwoPage() {
                 >
                   Posts
                 </button>
-                <button type="button" className="px-1 pb-3 transition hover:text-stone-300">
+                <button type="button" className="px-1 pb-3 transition hover:text-stone-300" >
                   Portfolio
                 </button>
               </div>
             </div>
           </section>
 
-          <div className="mb-5 flex items-center justify-between gap-3">
+          {/* <div className="mb-5 flex items-center justify-between gap-3">
             <p className="text-sm text-stone-400">Drag tiles to reorder the grid.</p>
-          </div>
+          </div> */}
 
           <div className="p-0">
-            <div>
+            {/* <div>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -372,7 +390,7 @@ export default function UserTwoPage() {
                   ) : null}
                 </DragOverlay>
               </DndContext>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

@@ -41,7 +41,7 @@
   --sidebar-border: rgb(255 255 255 / 10%);
   --sidebar-ring: rgb(245 158 11 / 40%);
   --canvas: #050505;
-  --panel: #101010;
+  --panel: #0b0b0b;
   --panel-alt: #16120e;
   --line: rgb(255 255 255 / 8%);
   --brand: #f59e0b;
@@ -110,9 +110,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top, rgb(245 158 11 / 10%), transparent 28%),
-    linear-gradient(180deg, #070707 0%, #050505 40%, #090603 100%);
+  background: #0b0b0b;
   color: var(--foreground);
   font-family: var(--font-sans);
 }
