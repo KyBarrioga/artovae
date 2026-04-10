@@ -23,6 +23,43 @@ const DESKTOP_ROWS = 8;
 const DESKTOP_CAPACITY = DESKTOP_COLUMNS * DESKTOP_ROWS;
 const INITIAL_BATCH_SIZE = 16;
 const BATCH_SIZE = 12;
+const ENABLE_GALLERY_AD_SLOTS = false;
+
+type ArtworkTile = {
+  id: number;
+  title: string;
+  artist: string;
+  section: string;
+  src: string;
+};
+
+type GalleryPlacement = {
+  row: number;
+  col: number;
+  widthUnits: number;
+  heightUnits: number;
+  className: string;
+};
+
+type GalleryTile =
+  | (ArtworkTile & {
+      kind: "artwork";
+      image: string;
+      widthUnits: number;
+      heightUnits: number;
+      className: string;
+    })
+  | {
+      id: string;
+      kind: "ad";
+      title: string;
+      artist: string;
+      section: string;
+      image: null;
+      widthUnits: number;
+      heightUnits: number;
+      className: string;
+    };
 
 function formatLabelFromFilename(filename: string) {
   if (/^https?:\/\//i.test(filename)) {
@@ -73,7 +110,7 @@ function resolveImageSource(value: string) {
   return `/static/img/${value}`;
 }
 
-const generatedGallery = imageFiles.slice(0, DESKTOP_CAPACITY).map((filename, index) => {
+const generatedGallery: ArtworkTile[] = imageFiles.slice(0, DESKTOP_CAPACITY).map((filename, index) => {
   const section = sections[index % sections.length];
   const { artist, title } = formatLabelFromFilename(filename);
 
@@ -172,14 +209,53 @@ function getTargetLargeCount(maxItemCount, columns, rows, random) {
   return pool[Math.floor(random() * pool.length)];
 }
 
-function packGallery(items, columns, rows, seed) {
-  const grid = [];
+function getReservedAdPlacementCount(columns: number) {
+  if (!ENABLE_GALLERY_AD_SLOTS) {
+    return 0;
+  }
+
+  if (columns >= 8) {
+    return 3;
+  }
+
+  if (columns >= 6) {
+    return 2;
+  }
+
+  if (columns >= 4) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function getAdPlacementIndexes(availablePlacementCount: number, adCount: number) {
+  if (adCount === 0 || availablePlacementCount === 0) {
+    return new Set<number>();
+  }
+
+  const indexes = new Set<number>();
+
+  for (let slot = 0; slot < adCount; slot += 1) {
+    const index = Math.min(
+      availablePlacementCount - 1,
+      Math.floor(((slot + 1) * availablePlacementCount) / (adCount + 1))
+    );
+    indexes.add(index);
+  }
+
+  return indexes;
+}
+
+function packGallery(items: ArtworkTile[], columns: number, rows: number, seed: number): GalleryTile[] {
+  const grid: boolean[][] = [];
   const random = createSeededRandom(seed);
+  const reservedAdCount = getReservedAdPlacementCount(columns);
   const targetLargeCount = getTargetLargeCount(items.length, columns, rows, random);
-  const requiredItems = columns * rows - targetLargeCount * 3;
+  const requiredItems = columns * rows - targetLargeCount * 3 - reservedAdCount;
   const selectedItems = items.slice(0, requiredItems);
-  const largePlacements = [];
-  const candidatePositions = [];
+  const largePlacements: Array<{ row: number; col: number }> = [];
+  const candidatePositions: Array<{ row: number; col: number; score: number }> = [];
 
   for (let row = 0; row <= rows - 2; row += 1) {
     for (let col = 0; col <= columns - 2; col += 1) {
@@ -200,7 +276,7 @@ function packGallery(items, columns, rows, seed) {
       }
     });
 
-  const placements = [];
+  const placements: GalleryPlacement[] = [];
 
   largePlacements.forEach(({ row, col }) => {
     placements.push({
@@ -228,24 +304,63 @@ function packGallery(items, columns, rows, seed) {
   }
 
   placements.sort((a, b) => (a.row - b.row) || (a.col - b.col));
+  const singleCellPlacements = placements.filter(
+    (placement) => placement.widthUnits === 1 && placement.heightUnits === 1
+  );
+  const reservedAdIndexes = getAdPlacementIndexes(singleCellPlacements.length, reservedAdCount);
+  let artworkIndex = 0;
+  let singleCellIndex = 0;
 
-  return selectedItems.map((item, index) => {
-    const placement = placements[index];
+  const packedTiles: GalleryTile[] = [];
 
-    return {
+  placements.forEach((placement) => {
+    const isSingleCell = placement.widthUnits === 1 && placement.heightUnits === 1;
+    const shouldUseAdSlot = isSingleCell && reservedAdIndexes.has(singleCellIndex);
+
+    if (isSingleCell) {
+      singleCellIndex += 1;
+    }
+
+    if (shouldUseAdSlot) {
+      packedTiles.push({
+        id: `ad-slot-${placement.row}-${placement.col}`,
+        kind: "ad",
+        title: "Sponsored",
+        artist: "Google Ad Slot",
+        section: "Sponsored",
+        image: null,
+        widthUnits: placement.widthUnits,
+        heightUnits: placement.heightUnits,
+        className: placement.className,
+      });
+      return;
+    }
+
+    const item = selectedItems[artworkIndex];
+
+    if (!item) {
+      return;
+    }
+
+    artworkIndex += 1;
+
+    packedTiles.push({
       ...item,
+      kind: "artwork",
       widthUnits: placement.widthUnits,
       heightUnits: placement.heightUnits,
       className: placement.className,
       image: item.src,
-    };
+    });
   });
+
+  return packedTiles;
 }
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState("For You");
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useMenuStore();
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItem, setSelectedItem] = useState<GalleryTile | null>(null);
   const [columns, setColumns] = useState(8);
   const [rows, setRows] = useState(DESKTOP_ROWS);
   const [layoutSeed, setLayoutSeed] = useState(1);
@@ -387,54 +502,75 @@ export default function Home() {
               key={item.id}
               className={`overflow-hidden border border-line bg-panel shadow-[0_16px_50px_rgba(0,0,0,0.35)] transition duration-300 hover:-translate-y-1 hover:border-amber-400/30 ${item.className}`}
             >
-              <button
-                type="button"
-                onClick={() => setSelectedItem(item)}
-                className="group flex h-full w-full flex-col text-left"
-              >
-                <div className="relative min-h-0 flex-1">
-                  <Image
-                    src={item.image}
-                    alt={`${item.title} by ${item.artist}`}
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1440px) 16vw, 12vw"
-                    className="object-cover transition duration-300 group-hover:scale-[1.015]"
-                    priority={item.id <= 10}
-                  // unoptimized
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
-                  <div
-                    className="
-                      absolute inset-x-0 bottom-0 h-28 overflow-hidden
-                    "
-                  >
-                    <div className="absolute inset-0 from-black/90 via-black/75 to-transparent" />
-                    <div
-                      className="
-                        absolute inset-x-0 bottom-0
-                        bg-gradient-to-t from-black via-black/80 via-black/50 to-transparent
-                        transform-gpu px-4 py-3 will-change-transform
-                        translate-y-5 opacity-0
-                        transition-[transform,opacity] duration-300 ease-out
-                        group-hover:translate-y-0 group-hover:opacity-100
-                      "
-                    >
-                      <h2 className="line-clamp-1 text-sm font-semibold text-white sm:text-base">
-                        {item.title}
-                      </h2>
-                      <p className="mt-1 line-clamp-1 text-xs text-stone-300 sm:text-sm">
-                        {item.artist}
-                      </p>
-                    </div>
+              {item.kind === "ad" ? (
+                <div
+                  className="flex h-full w-full flex-col justify-between bg-gradient-to-br from-[#17120a] via-[#111111] to-[#080808] p-4 text-left"
+                  data-slot="future-ad"
+                >
+                  <div>
+                    <span className="inline-flex border border-amber-400/20 bg-amber-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.24em] text-amber-200/80">
+                      Sponsored
+                    </span>
+                    <h2 className="mt-3 text-sm font-semibold text-stone-100">
+                      Reserved Ad Slot
+                    </h2>
+                    <p className="mt-2 text-xs leading-5 text-stone-400">
+                      This 1x1 cell is reserved for a future Google ad placement.
+                    </p>
+                  </div>
+                  <div className="mt-4 border border-dashed border-white/10 px-3 py-2 text-[11px] uppercase tracking-[0.24em] text-stone-500">
+                    300 x 250 recommended
                   </div>
                 </div>
-              </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSelectedItem(item)}
+                  className="group flex h-full w-full flex-col text-left"
+                >
+                  <div className="relative min-h-0 flex-1">
+                    <Image
+                      src={item.image}
+                      alt={`${item.title} by ${item.artist}`}
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, (max-width: 1440px) 16vw, 12vw"
+                      className="object-cover transition duration-300 group-hover:scale-[1.015]"
+                      priority={typeof item.id === "number" && item.id <= 10}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+                    <div
+                      className="
+                        absolute inset-x-0 bottom-0 h-28 overflow-hidden
+                      "
+                    >
+                      <div className="absolute inset-0 from-black/90 via-black/75 to-transparent" />
+                      <div
+                        className="
+                          absolute inset-x-0 bottom-0
+                          bg-gradient-to-t from-black via-black/80 via-black/50 to-transparent
+                          transform-gpu px-4 py-3 will-change-transform
+                          translate-y-5 opacity-0
+                          transition-[transform,opacity] duration-300 ease-out
+                          group-hover:translate-y-0 group-hover:opacity-100
+                        "
+                      >
+                        <h2 className="line-clamp-1 text-sm font-semibold text-white sm:text-base">
+                          {item.title}
+                        </h2>
+                        <p className="mt-1 line-clamp-1 text-xs text-stone-300 sm:text-sm">
+                          {item.artist}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              )}
             </article>
           ))}
         </section>
       </div>
 
-      {selectedItem ? (
+      {selectedItem?.kind === "artwork" ? (
         <div
           className="fixed inset-0 z-30 bg-black/85 p-4 backdrop-blur-sm sm:p-8"
           role="dialog"
