@@ -160,10 +160,11 @@ const SortableTile = memo(function SortableTile({
 
 export default function UserTwoPage() {
   const user = useUserStore((state) => state.user);
+  const hasHydrated = useUserStore((state) => state.hasHydrated);
   const setUser = useUserStore((state) => state.setUser);
   const [items, setItems] = useState<GridItem[]>(DEFAULT_ITEMS);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [preview, setPreview] = useState<string | null>(null)
   const [image, setImage] = useState<File | null>(null)
@@ -199,7 +200,13 @@ export default function UserTwoPage() {
   const profileImage = user?.profile.profile_picture || DEFAULT_PROFILE_IMAGE;
 
   useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
     if (user) {
+      console.log("Trial", user)
+      setIsProfileLoading(false);
       return;
     }
 
@@ -234,7 +241,7 @@ export default function UserTwoPage() {
     return () => {
       isMounted = false;
     };
-  }, [setUser, user]);
+  }, [hasHydrated, setUser, user]);
 
   useEffect(() => {
     const savedOrder = window.localStorage.getItem(USER2_LAYOUT_STORAGE_KEY);

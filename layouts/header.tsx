@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { createClient } from "lib/createBrowserClient";
 import { useMenuStore } from "store/useMenuStore";
+import { useUserStore } from "store/useUserStore";
 import { EllipsisVertical } from "lucide-react";
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -25,6 +26,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 export default function Header() {
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useMenuStore();
+  const clearUser = useUserStore((state) => state.clearUser);
   const router = useRouter();
   const [supabase] = useState(() => createClient());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -68,6 +70,7 @@ export default function Header() {
   async function handleLogout() {
     setIsSigningOut(true);
     await supabase.auth.signOut();
+    clearUser();
     setIsMobileMenuOpen(false);
     await router.push("/login");
     setIsSigningOut(false);
