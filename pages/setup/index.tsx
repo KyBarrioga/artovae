@@ -294,7 +294,6 @@ export default function SetupPage() {
         <section className="relative hidden lg:block lg:w-1/2">
           <img
             src={artwork}
-            alt="Featured fantasy artwork"
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-black/30" />
