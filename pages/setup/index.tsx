@@ -26,9 +26,10 @@ export default function SetupPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingAccess, setIsCheckingAccess] = useState(true);
+  const [authEmail, setAuthEmail] = useState("");
 
   const existingDisplayName = user?.profile.display_name?.trim() || user?.auth_user.display_name?.trim() || "";
-  const email = user?.auth_user.email || "";
+  const email = user?.auth_user.email || authEmail;
 
   useEffect(() => {
     if (existingDisplayName) {
@@ -44,41 +45,56 @@ export default function SetupPage() {
     let isActive = true;
 
     async function hydrateSetupState() {
-      const {
-        data: { user: authUser },
-        error,
-      } = await supabase.auth.getUser();
+      let shouldShowSetupForm = false;
 
-      if (!isActive) {
-        return;
-      }
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      if (error || !authUser) {
-        const nextPath = encodeURIComponent(getNextPath(router.query.next) || "/setup");
-        await router.replace(`/login?next=${nextPath}`);
-        return;
-      }
+        if (!isActive) {
+          return;
+        }
 
-      if (hasCompletedProfileSetup(authUser.user_metadata)) {
-        await router.replace("/user");
-        return;
-      }
+        const authUser = session?.user;
 
-      if (!useUserStore.getState().user) {
-        try {
-          const response = await api.get("/api/user/me");
+        if (!authUser) {
+          const nextPath = encodeURIComponent(getNextPath(router.query.next) || "/setup");
+          await router.replace(`/login?next=${nextPath}`);
+          return;
+        }
 
-          if (!isActive) {
-            return;
+        setAuthEmail(authUser.email || "");
+
+        if (hasCompletedProfileSetup(authUser.user_metadata)) {
+          await router.replace("/user");
+          return;
+        }
+
+        shouldShowSetupForm = true;
+
+        if (!useUserStore.getState().user) {
+          try {
+            const response = await api.get("/api/user/me");
+
+            if (!isActive) {
+              return;
+            }
+
+            setUser(response.data);
+          } catch (fetchError) {
+            console.error("Unable to hydrate user during setup", fetchError);
           }
-
-          setUser(response.data);
-        } catch (fetchError) {
-          console.error("Unable to hydrate user during setup", fetchError);
+        }
+      } catch (error) {
+        console.error("Unable to verify setup access", error);
+        setErrorMessage("We couldn't verify your session. Try refreshing the page.");
+        shouldShowSetupForm = true;
+      } finally {
+        if (isActive && shouldShowSetupForm) {
+          setIsCheckingAccess(false);
         }
       }
-
-      setIsCheckingAccess(false);
     }
 
     void hydrateSetupState();
@@ -92,6 +108,7 @@ export default function SetupPage() {
     event.preventDefault();
 
     const normalizedDisplayName = displayName.trim();
+    const nextPath = getNextPath(router.query.next);
 
     if (!normalizedDisplayName) {
       setErrorMessage("Display name is required.");
@@ -125,24 +142,26 @@ export default function SetupPage() {
       });
     }
 
-    try {
-      const response = await api.get("/api/user/me");
-      const fallbackDisplayName =
-        response.data?.auth_user?.display_name?.trim() || getDisplayNameFromMetadata(data.user?.user_metadata);
+    const fallbackDisplayName = getDisplayNameFromMetadata(data.user?.user_metadata) || normalizedDisplayName;
 
-      setUser({
-        ...response.data,
-        auth_user: {
-          ...response.data.auth_user,
-          display_name: fallbackDisplayName,
-        },
-      });
-    } catch (fetchError) {
-      console.error("Unable to refresh user profile after setup", fetchError);
-    }
+    void (async () => {
+      try {
+        const response = await api.get("/api/user/me");
+
+        setUser({
+          ...response.data,
+          auth_user: {
+            ...response.data.auth_user,
+            display_name: response.data?.auth_user?.display_name?.trim() || fallbackDisplayName,
+          },
+        });
+      } catch (fetchError) {
+        console.error("Unable to refresh user profile after setup", fetchError);
+      }
+    })();
 
     setIsSubmitting(false);
-    await router.replace(getNextPath(router.query.next));
+    await router.replace(nextPath);
   }
 
   if (isCheckingAccess) {
