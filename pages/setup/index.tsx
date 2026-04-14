@@ -160,7 +160,19 @@ export default function SetupPage() {
       }
     })();
 
+    const { error: refreshError } = await supabase.auth.refreshSession();
+
+    if (refreshError) {
+      console.error("Unable to refresh session after setup", refreshError);
+    }
+
     setIsSubmitting(false);
+
+    if (typeof window !== "undefined") {
+      window.location.assign(nextPath);
+      return;
+    }
+
     await router.replace(nextPath);
   }
 
