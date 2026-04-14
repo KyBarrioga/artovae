@@ -45,7 +45,7 @@ export default function SignupPage() {
     setIsSubmitting(true);
 
     const emailRedirectTo =
-      typeof window !== "undefined" ? `${window.location.origin}/auth/confirm?next=/user` : undefined;
+      typeof window !== "undefined" ? `${window.location.origin}/auth/confirm?next=/setup` : undefined;
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -110,7 +110,7 @@ export default function SignupPage() {
                     Before you sign up
                   </h2>
                   <p className="mt-4 text-sm leading-7 text-stone-400">
-                    Picsal is currently in beta. Some functions may be broken, unfinished, or still in progress, and
+                    Picsal is currently in active development. Some functions may be broken, unfinished, or still in progress, and
                     some features may take time to fully build out.
                   </p>
                   <p className="mt-4 text-sm leading-7 text-stone-400">
@@ -127,7 +127,7 @@ export default function SignupPage() {
                     className="mt-1 h-4 w-4 border border-line bg-black accent-amber-400"
                   />
                   <span>
-                    I understand this is a work in progress beta and I want to create an account anyway.
+                    I understand this is a work in progress application and I want to create an account anyway.
                   </span>
                 </label>
 

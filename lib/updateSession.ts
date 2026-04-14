@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { hasCompletedProfileSetup } from "lib/profileSetup";
 
 function copyCookies(from: NextResponse, to: NextResponse) {
   from.cookies.getAll().forEach((cookie) => {
@@ -40,8 +41,10 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname, search } = request.nextUrl;
+  const isSetupComplete = hasCompletedProfileSetup(user?.user_metadata);
+  const requiresAuth = pathname.startsWith("/user") || pathname === "/setup";
 
-  if (pathname.startsWith("/user") && !user) {
+  if (requiresAuth && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = `?next=${encodeURIComponent(`${pathname}${search}`)}`;
@@ -51,9 +54,29 @@ export async function updateSession(request: NextRequest) {
     return redirectResponse;
   }
 
-  if ((pathname === "/login" || pathname === "/signup") && user) {
+  if (user && !isSetupComplete && pathname.startsWith("/user")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/setup";
+    url.search = `?next=${encodeURIComponent(`${pathname}${search}`)}`;
+
+    const redirectResponse = NextResponse.redirect(url);
+    copyCookies(response, redirectResponse);
+    return redirectResponse;
+  }
+
+  if (user && pathname === "/setup" && isSetupComplete) {
     const url = request.nextUrl.clone();
     url.pathname = "/user";
+    url.search = "";
+
+    const redirectResponse = NextResponse.redirect(url);
+    copyCookies(response, redirectResponse);
+    return redirectResponse;
+  }
+
+  if ((pathname === "/login" || pathname === "/signup") && user) {
+    const url = request.nextUrl.clone();
+    url.pathname = isSetupComplete ? "/user" : "/setup";
     url.search = "";
 
     const redirectResponse = NextResponse.redirect(url);

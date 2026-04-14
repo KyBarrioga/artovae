@@ -3,6 +3,7 @@ import { SubmitEvent, useState } from "react";
 import { useRouter } from "next/router";
 import { createClient } from "lib/createBrowserClient";
 import { api } from "lib/apiClient";
+import { hasCompletedProfileSetup } from "lib/profileSetup";
 import { useUserStore } from "store/useUserStore";
 
 const artwork = "/static/img/login.jpg";
@@ -35,13 +36,16 @@ export default function LoginPage() {
 
     const response = await api.get("/api/user/me");
     useUserStore.getState().setUser(response.data);
-    const user = useUserStore.getState().user;
-    console.log("Trial", user);
 
-    const nextPath =
+    const requestedNextPath =
       typeof router.query.next === "string" && router.query.next.startsWith("/")
         ? router.query.next
         : "/user";
+    const nextPath = hasCompletedProfileSetup({
+      display_name: response.data?.auth_user?.display_name,
+    })
+      ? requestedNextPath
+      : `/setup?next=${encodeURIComponent(requestedNextPath)}`;
 
     await router.push(nextPath);
   }

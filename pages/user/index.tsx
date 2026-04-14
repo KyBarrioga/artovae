@@ -352,7 +352,7 @@ export default function UserTwoPage() {
       <Header />
       <div className="min-h-[calc(100vh-<header-height>px)] px-4 pb-8 sm:px-6">
         <div className="mx-auto max-w-[1400px]">
-          <section className="border-white/10 pt-2">
+          <section className="border-white/10 pt-2 mb-5">
             <div className="mx-auto max-w-[600px]">
               <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
