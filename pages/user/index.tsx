@@ -17,7 +17,6 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { tiles } from "static/costants";
 import Header from "layouts/header";
 import { api } from "lib/apiClient";
 import { useUserStore } from "store/useUserStore";
@@ -44,11 +43,11 @@ import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import axios from "axios";
+import { createClient } from "lib/createBrowserClient";
 
 const GRID_COLUMNS = 8;
 const GRID_ROWS = 4;
 const GRID_CAPACITY = GRID_COLUMNS * GRID_ROWS;
-const imageFiles = tiles;
 const USER2_LAYOUT_STORAGE_KEY = "picsal:user2:grid-order";
 const TILE_SIZE = 140;
 const DEFAULT_PROFILE_IMAGE =
@@ -73,33 +72,33 @@ type GridItem = {
   src: string;
 };
 
-function resolveImageSource(value: string) {
-  if (/^https?:\/\/imgur\.com\//i.test(value)) {
-    const match = value.match(/imgur\.com\/([a-zA-Z0-9]+)/i);
-    if (match) {
-      return `https://i.imgur.com/${match[1]}.jpg`;
-    }
-  }
+// function resolveImageSource(value: string) {
+//   if (/^https?:\/\/imgur\.com\//i.test(value)) {
+//     const match = value.match(/imgur\.com\/([a-zA-Z0-9]+)/i);
+//     if (match) {
+//       return `https://i.imgur.com/${match[1]}.jpg`;
+//     }
+//   }
 
-  if (/^https?:\/\//i.test(value)) {
-    return value;
-  }
+//   if (/^https?:\/\//i.test(value)) {
+//     return value;
+//   }
 
-  if (value.startsWith("/")) {
-    return value;
-  }
+//   if (value.startsWith("/")) {
+//     return value;
+//   }
 
-  if (value.startsWith("img/")) {
-    return `/static/${value}`;
-  }
+//   if (value.startsWith("img/")) {
+//     return `/static/${value}`;
+//   }
 
-  return `/static/img/${value}`;
-}
+//   return `/static/img/${value}`;
+// }
 
-const DEFAULT_ITEMS: GridItem[] = imageFiles.slice(0, GRID_CAPACITY).map((image, index) => ({
-  id: `tile-${index + 1}`,
-  src: resolveImageSource(image),
-}));
+// const DEFAULT_ITEMS: GridItem[] = imageFiles.slice(0, GRID_CAPACITY).map((image, index) => ({
+//   id: `tile-${index + 1}`,
+//   src: resolveImageSource(image),
+// }));
 
 function TileCard({
   item,
@@ -161,13 +160,13 @@ const SortableTile = memo(function SortableTile({
 export default function UserTwoPage() {
   const user = useUserStore((state) => state.user);
   const hasHydrated = useUserStore((state) => state.hasHydrated);
-  const setUser = useUserStore((state) => state.setUser);
-  const [items, setItems] = useState<GridItem[]>(DEFAULT_ITEMS);
+  const [items, setItems] = useState<GridItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [preview, setPreview] = useState<string | null>(null)
   const [image, setImage] = useState<File | null>(null)
+  const [supabase] = useState(() => createClient());
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -199,74 +198,68 @@ export default function UserTwoPage() {
     : "";
   const profileImage = user?.profile.profile_picture || DEFAULT_PROFILE_IMAGE;
 
+  const userItems = useMemo<GridItem[]>(() => {
+    const media = user?.media ?? [];
+
+    if (media.length === 0) {
+      return [];
+    }
+
+    return media.slice(0, GRID_CAPACITY).map((image, index) => ({
+      id: image.id || `tile-${index + 1}`,
+      src: image.preview_public_url || image.public_url,
+    }));
+  }, [user]);
+
   useEffect(() => {
     if (!hasHydrated) {
       return;
     }
 
     if (user) {
-      console.log("Trial", user)
+      if (userItems.length > 0) {
+        setItems(userItems);
+      }
+
       setIsProfileLoading(false);
       return;
     }
 
-    let isMounted = true;
+    async function checkSessionState() {
+      const { data } = await supabase.auth.getSession();
 
-    async function loadUserProfile() {
-      setIsProfileLoading(true);
-
-      try {
-        const response = await api.get("/api/user/me");
-
-        if (!isMounted) {
-          return;
-        }
-
-        setUser(response.data);
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        console.error("Unable to load profile", error);
-      } finally {
-        if (isMounted) {
-          setIsProfileLoading(false);
-        }
+      if (!data.session) {
+        setIsProfileLoading(false);
       }
     }
 
-    void loadUserProfile();
+    void checkSessionState();
+  }, [hasHydrated, supabase, user, userItems]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [hasHydrated, setUser, user]);
+  // useEffect(() => {
+  //   const savedOrder = window.localStorage.getItem(USER2_LAYOUT_STORAGE_KEY);
 
-  useEffect(() => {
-    const savedOrder = window.localStorage.getItem(USER2_LAYOUT_STORAGE_KEY);
+  //   if (!savedOrder) {
+  //     return;
+  //   }
 
-    if (!savedOrder) {
-      return;
-    }
+  //   try {
+  //     const orderedIds = JSON.parse(savedOrder) as string[];
+  //     const itemsById = new Map(DEFAULT_ITEMS.map((item) => [item.id, item]));
+  //     const restoredItems = orderedIds
+  //       .map((id) => itemsById.get(id))
+  //       .filter((item): item is GridItem => Boolean(item));
+  //     const missingItems = DEFAULT_ITEMS.filter(
+  //       (item) => !restoredItems.some((restoredItem) => restoredItem.id === item.id)
+  //     );
 
-    try {
-      const orderedIds = JSON.parse(savedOrder) as string[];
-      const itemsById = new Map(DEFAULT_ITEMS.map((item) => [item.id, item]));
-      const restoredItems = orderedIds
-        .map((id) => itemsById.get(id))
-        .filter((item): item is GridItem => Boolean(item));
-      const missingItems = DEFAULT_ITEMS.filter(
-        (item) => !restoredItems.some((restoredItem) => restoredItem.id === item.id)
-      );
-
-      if (restoredItems.length > 0) {
-        setItems([...restoredItems, ...missingItems]);
-      }
-    } catch {
-      window.localStorage.removeItem(USER2_LAYOUT_STORAGE_KEY);
-    }
-  }, []);
+  //     if (restoredItems.length > 0) {
+  //       setItems([...restoredItems, ...missingItems]);
+  //     }
+  //   } catch {
+  //     window.localStorage.removeItem(USER2_LAYOUT_STORAGE_KEY);
+  //   }
+  // }, []);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -488,7 +481,7 @@ export default function UserTwoPage() {
           </div> */}
 
           <div className="p-0">
-            {/* <div>
+            <div>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -520,7 +513,7 @@ export default function UserTwoPage() {
                   ) : null}
                 </DragOverlay>
               </DndContext>
-            </div> */}
+            </div>
           </div>
         </div>
       </div>

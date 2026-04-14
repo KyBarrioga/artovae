@@ -76,6 +76,10 @@ export default function Header() {
     setIsSigningOut(false);
   }
 
+  function handleRedirect(page: string) {
+    router.push(`/${page}`)
+  }
+
   const profileLinkClass =
     "flex h-11 w-11 items-center justify-center rounded-full border border-amber-400/25 bg-[#17120a] text-sm font-semibold uppercase tracking-[0.18em] text-amber-100 transition hover:border-amber-300/60 hover:bg-[#21180b] cursor-pointer";
   const logoutButtonClass =
@@ -160,7 +164,7 @@ export default function Header() {
                   <DropdownMenuContent className="w-40" align="start">
                     <DropdownMenuGroup>
                       <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={()=>{handleRedirect("user")}}>
                         Profile
                       </DropdownMenuItem>
                       <DropdownMenuItem>
@@ -310,23 +314,76 @@ export default function Header() {
             <div className="flex items-center justify-between gap-3">
               {isAuthenticated ? (
                 <>
-                  <Link
-                    href="/user"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={profileLinkClass}
-                    aria-label="Go to your profile"
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div className={profileLinkClass} aria-label="Go to your profile" >
+                      You
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-40" align="start">
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={()=>{handleRedirect("user")}}>
+                        Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        Bookmarks
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        Settings
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        onClick={handleLogout}
+                        disabled={isSigningOut}
+                      >
+                        {isSigningOut ? <Spinner /> : "Log out"}
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Separator because of long ass menu */}
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <EllipsisVertical className="text-gray-100" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-30" align="start">
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem onClick={() => showToastWarning("About")}>
+                        About
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => showToastWarning("FAQ")}>
+                        FAQ
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => showToastWarning("Feedback")}>
+                        Feedback
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => showToastWarning("Contact")}>
+                        Contact
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem onClick={() => showToastWarning("GitHub")}>GitHub</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => showToastWarning("Support")}>Support</DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={isSigningOut}
+                    className={logoutButtonClass}
                   >
-                    You
-                  </Link>
-                  {/* <button
-                      type="button"
-                      onClick={handleLogout}
-                      disabled={isSigningOut}
-                      className={logoutButtonClass}
-                    >
-                      {isSigningOut ? "Logging out..." : "Log out"}
-                    </button> */}
-                </>
+                    {isSigningOut ? "Logging out..." : "Log out"}
+                  </button> */}
+              </>
               ) : (
                 <Link
                   href="/login"
