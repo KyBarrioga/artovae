@@ -26,39 +26,54 @@ export default function UploadDialog() {
     async function handleUploadImage(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
 
+        const formData = new FormData(event.target);
+
+        const titleEntry = formData.get("title");
+        const descriptionEntry = formData.get("description");
+        const title = typeof titleEntry === "string" ? titleEntry.trim() : "";
+        const description = typeof descriptionEntry === "string" ? descriptionEntry.trim() : "";
+
         if (!image) {
             toast.error("Please choose an image first.");
             return;
         }
 
         try {
-            const uploadFormData = new FormData();
-            uploadFormData.append("image", image);
+            const uploadFormImage = new FormData();
+            uploadFormImage.append("image", image);
 
             const presignRes = await api.post(
                 "/api/upload/image",
-                uploadFormData
+                uploadFormImage
             );
 
-            const { upload_url, public_url } = presignRes.data as {
+            const { object_key, upload_url, public_url } = presignRes.data as {
                 upload_url: string;
                 public_url?: string;
+                object_key?: string;
             };
 
-            try {
-                const uploadRes = await axios.put(upload_url, image, {
-                    headers: {
-                        "Content-Type": image.type || "application/octet-stream",
-                    },
-                });
-
-                console.log("Upload complete:", uploadRes.status);
-                // await axios.post("/api/upload/", {
-                //     // payload
-                // });
-            } catch (error) {
-                console.error("Upload failed or next request failed:", error);
+            if (!upload_url || !object_key || !public_url) {
+                throw new Error("Upload service did not return the required upload details.");
             }
+
+            const uploadRes = await axios.put(upload_url, image, {
+                headers: {
+                    "Content-Type": image.type || "application/octet-stream",
+                },
+            });
+            console.log("Upload complete:", uploadRes.status);
+
+            const uploadFormDetails = new FormData();
+            uploadFormDetails.append("object_key", object_key);
+            uploadFormDetails.append("public_url", public_url);
+            uploadFormDetails.append("kind", "image");
+            uploadFormDetails.append("title", title);
+            uploadFormDetails.append("description", description);
+            uploadFormDetails.append("preview_object_key", object_key);
+            uploadFormDetails.append("preview_public_url", public_url);
+
+            await api.post("/api/upload/details", uploadFormDetails);
 
             console.log("Uploaded image URL:", public_url);
             setImage(null);
@@ -67,6 +82,24 @@ export default function UploadDialog() {
             toast.success("Image uploaded successfully.");
         } catch (error) {
             console.error("Image upload failed", error);
+            if (axios.isAxiosError(error)) {
+                const apiError = error.response?.data;
+                const detail =
+                    typeof apiError?.detail === "string"
+                        ? apiError.detail
+                        : typeof apiError?.error === "string"
+                            ? apiError.error
+                            : "Image upload failed.";
+
+                toast.error(detail);
+                return;
+            }
+
+            if (error instanceof Error) {
+                toast.error(error.message);
+                return;
+            }
+
             toast.error("Image upload failed.");
         }
     }
