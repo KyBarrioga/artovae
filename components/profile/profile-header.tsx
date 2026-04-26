@@ -9,6 +9,7 @@ import { useUserStore } from "@/store/useUserStore"
 import { toast } from "sonner"
 import { createClient } from "lib/createBrowserClient";
 import UploadDialog from "../dialogs/upload-dialog";
+import EditProfileDialog from "../dialogs/edit-profile-dialog";
 
 const DEFAULT_PROFILE_IMAGE =
     "data:image/svg+xml;utf8," +
@@ -116,12 +117,7 @@ export default function ProfileHeader() {
 
             <div className="flex justify-center sm:justify-end items-center mt-2">
                 <ButtonGroup>
-                    <Button
-                        variant="secondary"
-                        onClick={() => showToastWarning("Edit Profile")}
-                    >
-                        Edit Profile
-                    </Button>
+                    <EditProfileDialog />
                     <ButtonGroupSeparator />
                     <UploadDialog />
                 </ButtonGroup>
