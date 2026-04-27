@@ -5,6 +5,7 @@ import { Toaster } from "sonner"
 import { api } from "lib/apiClient";
 import { createClient } from "lib/createBrowserClient";
 import { useUserStore } from "store/useUserStore";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 
 import "static/globals.css";
@@ -75,6 +76,8 @@ function AuthBootstrap() {
 }
 
 export default function App({ Component, pageProps }: AppProps) {
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
     <>
       <Head>
@@ -82,13 +85,16 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="description" content="A concept front-end for a visual art discovery platform." />
         <link rel="icon" href="static/logo.png" />
       </Head>
-      <div className="dark">
-        <AuthBootstrap />
-        <Toaster position="top-center"
-          theme="system"
-          closeButton/>
-        <Component {...pageProps} />
-      </div>
+      <QueryClientProvider client={queryClient}>
+        <div className="dark">
+          <AuthBootstrap />
+          <Toaster position="top-center"
+            theme="system"
+            closeButton />
+          <Component {...pageProps} />
+        </div>
+      </QueryClientProvider>
+
     </>
   );
 }

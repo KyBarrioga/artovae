@@ -20,6 +20,7 @@ import { CSS } from "@dnd-kit/utilities";
 import Header from "layouts/header";
 import { useUserStore } from "store/useUserStore";
 import ProfileHeader from "@/components/profile/profile-header";
+import { useUserMedia } from "@/hooks/use-user-media";
 
 const GRID_COLUMNS = 8;
 const GRID_ROWS = 4;
@@ -121,6 +122,7 @@ export default function UserPage() {
   const user = useUserStore((state) => state.user);
   const [items, setItems] = useState<GridItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const { data: media = [] } = useUserMedia();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -136,18 +138,12 @@ export default function UserPage() {
     [activeId, items]
   );
 
-  const userItems = useMemo<GridItem[]>(() => {
-    const media = user?.media ?? [];
-
-    if (media.length === 0) {
-      return [];
-    }
-
+  const userItems = useMemo(() => {
     return media.slice(0, GRID_CAPACITY).map((image, index) => ({
       id: image.id || `tile-${index + 1}`,
       src: image.preview_public_url || image.public_url,
     }));
-  }, [user]);
+  }, [media]);
 
   useEffect(() => {
     if (user) {

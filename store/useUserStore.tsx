@@ -1,41 +1,6 @@
+import { UserProfile } from "@/types/user";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-
-type AuthUser = {
-  id: string;
-  email: string;
-  display_name: string;
-  role: string;
-};
-
-type Profile = {
-  id: string;
-  created_at: string;
-  description: string;
-  display_name: string;
-  profile_picture: string | null;
-  can_access: boolean;
-};
-
-type UserImage = {
-  id: string,
-  user_id: string,
-  object_key: string,
-  public_url: string,
-  kind: string,
-  created_at: string,
-  title: string,
-  description: string,
-  preview_object_key: string,
-  preview_public_url: string
-};
-
-
-type UserProfile = {
-  auth_user: AuthUser;
-  profile: Profile;
-  media: UserImage[];
-};
 
 type UserStore = {
   user: UserProfile | null;

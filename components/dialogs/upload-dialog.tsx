@@ -14,19 +14,38 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "lib/apiClient";
 import { toast } from "sonner"
-import axios from "axios";
+import { useUploadImage } from "@/hooks/use-user-upload";
+import { Progress } from "@/components/ui/progress";
 
 export default function UploadDialog() {
     const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
     const [image, setImage] = useState<File | null>(null)
     const [preview, setPreview] = useState<string | null>(null)
+    const uploadImage = useUploadImage()
+
+    function resetDialogState() {
+        setImage(null);
+        setPreview(null);
+        uploadImage.resetUploadState();
+    }
+
+    function handleDialogOpenChange(isOpen: boolean) {
+        if (uploadImage.isPending) {
+            return;
+        }
+
+        setIsUploadDialogOpen(isOpen);
+
+        if (!isOpen) {
+            resetDialogState();
+        }
+    }
 
     async function handleUploadImage(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        const formData = new FormData(event.target);
+        const formData = new FormData(event.currentTarget);
 
         const titleEntry = formData.get("title");
         const descriptionEntry = formData.get("description");
@@ -39,62 +58,17 @@ export default function UploadDialog() {
         }
 
         try {
-            const uploadFormImage = new FormData();
-            uploadFormImage.append("image", image);
+            await uploadImage.mutateAsync({
+                image,
+                title,
+                description
+            })
 
-            const presignRes = await api.post(
-                "/api/upload/image",
-                uploadFormImage
-            );
-
-            const { object_key, upload_url, public_url } = presignRes.data as {
-                upload_url: string;
-                public_url?: string;
-                object_key?: string;
-            };
-
-            if (!upload_url || !object_key || !public_url) {
-                throw new Error("Upload service did not return the required upload details.");
-            }
-
-            const uploadRes = await axios.put(upload_url, image, {
-                headers: {
-                    "Content-Type": image.type || "application/octet-stream",
-                },
-            });
-            console.log("Upload complete:", uploadRes.status);
-
-            const uploadFormDetails = new FormData();
-            uploadFormDetails.append("object_key", object_key);
-            uploadFormDetails.append("public_url", public_url);
-            uploadFormDetails.append("kind", "image");
-            uploadFormDetails.append("title", title);
-            uploadFormDetails.append("description", description);
-            uploadFormDetails.append("preview_object_key", object_key);
-            uploadFormDetails.append("preview_public_url", public_url);
-
-            await api.post("/api/upload/details", uploadFormDetails);
-
-            console.log("Uploaded image URL:", public_url);
-            setImage(null);
-            setPreview(null);
+            resetDialogState();
             setIsUploadDialogOpen(false);
             toast.success("Image uploaded successfully.");
         } catch (error) {
-            console.error("Image upload failed", error);
-            if (axios.isAxiosError(error)) {
-                const apiError = error.response?.data;
-                const detail =
-                    typeof apiError?.detail === "string"
-                        ? apiError.detail
-                        : typeof apiError?.error === "string"
-                            ? apiError.error
-                            : "Image upload failed.";
-
-                toast.error(detail);
-                return;
-            }
-
+            uploadImage.resetUploadState();
             if (error instanceof Error) {
                 toast.error(error.message);
                 return;
@@ -113,7 +87,7 @@ export default function UploadDialog() {
     }
 
     return (
-        <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+        <Dialog open={isUploadDialogOpen} onOpenChange={handleDialogOpenChange}>
             <DialogTrigger asChild>
                 <Button size="icon" variant="secondary">
                     <Plus />
@@ -157,11 +131,25 @@ export default function UploadDialog() {
                         </Field>
                     </FieldGroup>
 
+                    {uploadImage.isPending ? (
+                        <div className="mt-4 space-y-2">
+                            <div className="flex items-center justify-between text-sm text-stone-300">
+                                <span>
+                                    {uploadImage.isFinalizing ? "Finalizing upload..." : "Uploading to storage..."}
+                                </span>
+                                <span>{uploadImage.uploadProgress}%</span>
+                            </div>
+                            <Progress value={uploadImage.uploadProgress} className="h-2 rounded-full" />
+                        </div>
+                    ) : null}
+
                     <DialogFooter className="mt-3">
                         <DialogClose asChild>
-                            <Button variant="ghost">Cancel</Button>
+                            <Button variant="ghost" disabled={uploadImage.isPending}>Cancel</Button>
                         </DialogClose>
-                        <Button variant="submit" type="submit">Upload</Button>
+                        <Button variant="submit" type="submit" disabled={uploadImage.isPending}>
+                            {uploadImage.isFinalizing ? "Finalizing..." : uploadImage.isPending ? "Uploading..." : "Upload"}
+                        </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
