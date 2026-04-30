@@ -3,8 +3,7 @@ import { useRouter } from "next/router";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { api } from "lib/apiClient";
-import { createClient } from "lib/createBrowserClient";
-import { getDisplayNameFromMetadata, hasCompletedProfileSetup } from "lib/profileSetup";
+import { hasCompletedProfileSetup } from "lib/profileSetup";
 import { useUserStore } from "store/useUserStore";
 
 const artwork = "/static/img/login.jpg";
@@ -19,9 +18,9 @@ function getNextPath(value: string | string[] | undefined) {
 
 export default function SetupPage() {
   const router = useRouter();
-  const [supabase] = useState(() => createClient());
   const user = useUserStore((state) => state.user);
   const setUser = useUserStore((state) => state.setUser);
+  const clearUser = useUserStore((state) => state.clearUser);
   const [displayName, setDisplayName] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,55 +44,39 @@ export default function SetupPage() {
     let isActive = true;
 
     async function hydrateSetupState() {
-      let shouldShowSetupForm = false;
-
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const response = await api.get("/api/user/me");
 
         if (!isActive) {
           return;
         }
 
-        const authUser = session?.user;
+        setUser(response.data);
+        setAuthEmail(response.data?.auth_user?.email || "");
 
-        if (!authUser) {
-          const nextPath = encodeURIComponent(getNextPath(router.query.next) || "/setup");
-          await router.replace(`/login?next=${nextPath}`);
-          return;
-        }
-
-        setAuthEmail(authUser.email || "");
-
-        if (hasCompletedProfileSetup(authUser.user_metadata)) {
+        if (hasCompletedProfileSetup({
+          display_name:
+            response.data?.profile?.display_name ||
+            response.data?.auth_user?.display_name ||
+            "",
+        })) {
           await router.replace("/user");
           return;
         }
-
-        shouldShowSetupForm = true;
-
-        if (!useUserStore.getState().user) {
-          try {
-            const response = await api.get("/api/user/me");
-
-            if (!isActive) {
-              return;
-            }
-
-            setUser(response.data);
-          } catch (fetchError) {
-            console.error("Unable to hydrate user during setup", fetchError);
-          }
-        }
       } catch (error) {
-        console.error("Unable to verify setup access", error);
-        setErrorMessage("We couldn't verify your session. Try refreshing the page.");
-        shouldShowSetupForm = true;
-      } finally {
-        if (isActive && shouldShowSetupForm) {
-          setIsCheckingAccess(false);
+        if (!isActive) {
+          return;
         }
+
+        clearUser();
+
+        const nextPath = encodeURIComponent(getNextPath(router.query.next) || "/setup");
+        await router.replace(`/login?next=${nextPath}`);
+        return;
+      }
+
+      if (isActive) {
+        setIsCheckingAccess(false);
       }
     }
 
@@ -102,7 +85,7 @@ export default function SetupPage() {
     return () => {
       isActive = false;
     };
-  }, [router, router.isReady, setUser, supabase]);
+  }, [clearUser, router, router.isReady, setUser]);
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -118,62 +101,11 @@ export default function SetupPage() {
     setErrorMessage("");
     setIsSubmitting(true);
 
-    const { data, error } = await supabase.auth.updateUser({
-      data: {
-        display_name: normalizedDisplayName,
-      },
-    });
-
-    if (error) {
+    try {
+      setErrorMessage("Setup save still needs a server endpoint for updating display name.");
+    } finally {
       setIsSubmitting(false);
-      setErrorMessage(error.message);
-      return;
     }
-
-    const currentUser = useUserStore.getState().user;
-
-    if (currentUser) {
-      setUser({
-        ...currentUser,
-        auth_user: {
-          ...currentUser.auth_user,
-          display_name: normalizedDisplayName,
-        },
-      });
-    }
-
-    const fallbackDisplayName = getDisplayNameFromMetadata(data.user?.user_metadata) || normalizedDisplayName;
-
-    void (async () => {
-      try {
-        const response = await api.get("/api/user/me");
-
-        setUser({
-          ...response.data,
-          auth_user: {
-            ...response.data.auth_user,
-            display_name: response.data?.auth_user?.display_name?.trim() || fallbackDisplayName,
-          },
-        });
-      } catch (fetchError) {
-        console.error("Unable to refresh user profile after setup", fetchError);
-      }
-    })();
-
-    const { error: refreshError } = await supabase.auth.refreshSession();
-
-    if (refreshError) {
-      console.error("Unable to refresh session after setup", refreshError);
-    }
-
-    setIsSubmitting(false);
-
-    if (typeof window !== "undefined") {
-      window.location.assign(nextPath);
-      return;
-    }
-
-    await router.replace(nextPath);
   }
 
   if (isCheckingAccess) {

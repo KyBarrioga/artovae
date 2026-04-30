@@ -7,9 +7,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUserStore } from "@/store/useUserStore"
 import { toast } from "sonner"
-import { createClient } from "lib/createBrowserClient";
 import UploadDialog from "../dialogs/upload-dialog";
 import EditProfileDialog from "../dialogs/edit-profile-dialog";
+import { api } from "@/lib/apiClient";
 
 const DEFAULT_PROFILE_IMAGE =
     "data:image/svg+xml;utf8," +
@@ -48,7 +48,7 @@ export default function ProfileHeader() {
         : "";
     const [isProfileLoading, setIsProfileLoading] = useState(true);
     const hasHydrated = useUserStore((state) => state.hasHydrated);
-    const [supabase] = useState(() => createClient());
+    const setUser = useUserStore((state) => state.setUser);
 
     function showToastWarning(feature: string) {
         return toast.warning(`Unavailable, ${feature} feature still in progress.`)
@@ -64,16 +64,32 @@ export default function ProfileHeader() {
             return;
         }
 
-        async function checkSessionState() {
-            const { data } = await supabase.auth.getSession();
+        let isMounted = true;
 
-            if (!data.session) {
+        async function hydrateProfileState() {
+            try {
+                const response = await api.get("/api/user/me");
+
+                if (!isMounted) {
+                    return;
+                }
+
+                setUser(response.data);
+            } catch {
+                if (!isMounted) {
+                    return;
+                }
+
                 setIsProfileLoading(false);
             }
         }
 
-        void checkSessionState();
-    }, [hasHydrated, supabase, user]);
+        void hydrateProfileState();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [hasHydrated, setUser, user]);
 
     return (
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">

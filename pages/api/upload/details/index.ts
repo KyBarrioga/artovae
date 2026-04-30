@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 const apiClient = axios.create({
   baseURL: process.env.PICSAL_API_URL ?? "http://127.0.0.1:8000/api/",
+  withCredentials: true,
 });
 
 export const config = {

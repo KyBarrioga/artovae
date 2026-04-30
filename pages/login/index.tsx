@@ -22,32 +22,40 @@ export default function LoginPage() {
     setErrorMessage("");
     setIsSubmitting(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      // const { error } = await supabase.auth.signInWithPassword({
+      //   email,
+      //   password,
+      // });
+      await api.post("/api/auth/login/", {
+        email,
+        password,
+      });
 
-    setIsSubmitting(false);
+      setIsSubmitting(false);
 
-    if (error) {
-      setErrorMessage(error.message);
-      return;
+
+      const response = await api.get("/api/user/me");
+      useUserStore.getState().setUser(response.data);
+
+      const requestedNextPath =
+        typeof router.query.next === "string" && router.query.next.startsWith("/")
+          ? router.query.next
+          : "/user";
+      const nextPath = hasCompletedProfileSetup({
+        display_name: response.data?.auth_user?.display_name,
+      })
+        ? requestedNextPath
+        : `/setup?next=${encodeURIComponent(requestedNextPath)}`;
+
+      await router.push(nextPath);
+    } catch (error) {
+      if (error) {
+        setErrorMessage(error.message);
+        return;
+      }
+
     }
-
-    const response = await api.get("/api/user/me");
-    useUserStore.getState().setUser(response.data);
-
-    const requestedNextPath =
-      typeof router.query.next === "string" && router.query.next.startsWith("/")
-        ? router.query.next
-        : "/user";
-    const nextPath = hasCompletedProfileSetup({
-      display_name: response.data?.auth_user?.display_name,
-    })
-      ? requestedNextPath
-      : `/setup?next=${encodeURIComponent(requestedNextPath)}`;
-
-    await router.push(nextPath);
   }
 
   return (

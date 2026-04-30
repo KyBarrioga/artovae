@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-import { createClient } from "lib/createBrowserClient";
+import { useState } from "react";
+import { api } from "@/lib/apiClient";
 import { useMenuStore } from "store/useMenuStore";
 import { useUserStore } from "store/useUserStore";
 import { EllipsisVertical } from "lucide-react";
@@ -26,54 +26,29 @@ import { Spinner } from "@/components/ui/spinner";
 
 export default function Header() {
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useMenuStore();
+  const user = useUserStore((state) => state.user);
   const clearUser = useUserStore((state) => state.clearUser);
   const router = useRouter();
-  const [supabase] = useState(() => createClient());
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const isAuthenticated = Boolean(user);
 
   function showToastWarning(feature: string) {
     return toast.warning(`Unavailable, ${feature} feature still in progress.`)
   }
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadUser() {
-      const { data } = await supabase.auth.getUser();
-
-      if (!isMounted) {
-        return;
-      }
-
-      setIsAuthenticated(Boolean(data.user));
-    }
-
-    void loadUser();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!isMounted) {
-        return;
-      }
-
-      setIsAuthenticated(Boolean(session?.user));
-    });
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
-
   async function handleLogout() {
     setIsSigningOut(true);
-    await supabase.auth.signOut();
-    clearUser();
-    setIsMobileMenuOpen(false);
-    await router.push("/login");
-    setIsSigningOut(false);
+
+    try {
+      await api.post("/api/auth/logout/");
+    } catch (error) {
+      console.error("Unable to log out", error);
+    } finally {
+      setIsMobileMenuOpen(false);
+      await router.push("/login");
+      clearUser();
+      setIsSigningOut(false);
+    }
   }
 
   function handleRedirect(page: string) {

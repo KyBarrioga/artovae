@@ -2,6 +2,7 @@ import Link from "next/link";
 import { SubmitEvent, useState } from "react";
 import { useRouter } from "next/router";
 import { createClient } from "lib/createBrowserClient";
+import { api } from "@/lib/apiClient";
 
 const artwork = "/static/img/login.jpg";
 const passwordRule = /^(?=.*\d).{8,}$/;
@@ -45,34 +46,44 @@ export default function SignupPage() {
     setIsSubmitting(true);
 
     const emailRedirectTo =
-      typeof window !== "undefined" ? `${window.location.origin}/auth/confirm?next=/setup` : undefined;
+      typeof window !== "undefined"
+        ? `${window.location.origin}/auth/confirm?next=/setup`
+        : undefined;
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
+    try {
+      await api.post("/api/auth/signup/", {
+        email,
+        password,
         emailRedirectTo,
-      },
-    });
+      });
 
-    setIsSubmitting(false);
+      try {
+        await api.get("/api/user/me");
+        await router.push("/user");
+        return;
+      } catch {
+        setIsSubmitted(true);
+        setSuccessMessage("Account created. Check your email to confirm your signup and finish logging in.");
+        setEmail("");
+        setPassword("");
+        setConfirmPassword("");
+      }
+    } catch (error: any) {
+      const detail =
+        typeof error?.response?.data?.detail === "string"
+          ? error.response.data.detail
+          : typeof error?.response?.data?.error === "string"
+            ? error.response.data.error
+            : error instanceof Error
+              ? error.message
+              : "Unable to create account.";
 
-    if (error) {
-      setErrorMessage(error.message);
-      return;
+      setErrorMessage(detail);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (data.session) {
-      await router.push("/user");
-      return;
-    }
-
-    setIsSubmitted(true);
-    setSuccessMessage("Account created. Check your email to confirm your signup and finish logging in.");
-    setEmail("");
-    setPassword("");
-    setConfirmPassword("");
   }
+
 
   return (
     <main className="relative isolate min-h-dvh overflow-hidden bg-canvas px-4 py-4 sm:px-6 sm:py-6 lg:px-8">

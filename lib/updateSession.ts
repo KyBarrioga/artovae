@@ -1,88 +1,29 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { hasCompletedProfileSetup } from "lib/profileSetup";
-
-function copyCookies(from: NextResponse, to: NextResponse) {
-  from.cookies.getAll().forEach((cookie) => {
-    to.cookies.set(cookie);
-  });
-}
 
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({
-    request,
-  });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-
-          response = NextResponse.next({
-            request,
-          });
-
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const { pathname, search } = request.nextUrl;
-  const isSetupComplete = hasCompletedProfileSetup(user?.user_metadata);
   const requiresAuth = pathname.startsWith("/user") || pathname === "/setup";
+  const accessToken = request.cookies.get("picsal_access_token")?.value;
+  const refreshToken = request.cookies.get("picsal_refresh_token")?.value;
+  const hasSession = Boolean(accessToken || refreshToken);
 
-  if (requiresAuth && !user) {
+  if (requiresAuth && !hasSession) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = `?next=${encodeURIComponent(`${pathname}${search}`)}`;
 
-    const redirectResponse = NextResponse.redirect(url);
-    copyCookies(response, redirectResponse);
-    return redirectResponse;
+    return NextResponse.redirect(url);
   }
 
-  if (user && !isSetupComplete && pathname.startsWith("/user")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/setup";
-    url.search = `?next=${encodeURIComponent(`${pathname}${search}`)}`;
-
-    const redirectResponse = NextResponse.redirect(url);
-    copyCookies(response, redirectResponse);
-    return redirectResponse;
-  }
-
-  if (user && pathname === "/setup" && isSetupComplete) {
+  if ((pathname === "/login" || pathname === "/signup") && hasSession) {
     const url = request.nextUrl.clone();
     url.pathname = "/user";
     url.search = "";
 
-    const redirectResponse = NextResponse.redirect(url);
-    copyCookies(response, redirectResponse);
-    return redirectResponse;
+    return NextResponse.redirect(url);
   }
 
-  if ((pathname === "/login" || pathname === "/signup") && user) {
-    const url = request.nextUrl.clone();
-    url.pathname = isSetupComplete ? "/user" : "/setup";
-    url.search = "";
-
-    const redirectResponse = NextResponse.redirect(url);
-    copyCookies(response, redirectResponse);
-    return redirectResponse;
-  }
-
-  return response;
+  return NextResponse.next({
+    request,
+  });
 }
