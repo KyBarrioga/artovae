@@ -25,15 +25,15 @@ function AuthBootstrap() {
       try {
         const response = await api.get("/api/user/me");
 
-        // if (!isMounted) {
-        //   return;
-        // }
+        if (!isMounted) {
+          return;
+        }
 
         setUser(response.data);
       } catch (error) {
-        // if (!isMounted) {
-        //   return;
-        // }
+        if (!isMounted) {
+          return;
+        }
 
         clearUser();
       }

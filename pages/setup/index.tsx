@@ -93,6 +93,7 @@ export default function SetupPage() {
     const normalizedDisplayName = displayName.trim();
     const nextPath = getNextPath(router.query.next);
 
+    console.log("normalizedDisplayName", normalizedDisplayName)
     if (!normalizedDisplayName) {
       setErrorMessage("Display name is required.");
       return;
@@ -102,7 +103,10 @@ export default function SetupPage() {
     setIsSubmitting(true);
 
     try {
-      setErrorMessage("Setup save still needs a server endpoint for updating display name.");
+      await api.post("/api/auth/setup/", {
+        display_name: normalizedDisplayName
+      });
+      await router.push(nextPath);
     } finally {
       setIsSubmitting(false);
     }
