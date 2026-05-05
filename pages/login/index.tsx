@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { SubmitEvent, useState } from "react";
 import { useRouter } from "next/router";
-import { createClient } from "lib/createBrowserClient";
 import { api } from "lib/apiClient";
 import { hasCompletedProfileSetup } from "lib/profileSetup";
 import { useUserStore } from "store/useUserStore";
@@ -10,7 +9,6 @@ const artwork = "/static/img/login.jpg";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [supabase] = useState(() => createClient());
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,18 +21,10 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      // const { error } = await supabase.auth.signInWithPassword({
-      //   email,
-      //   password,
-      // });
       await api.post("/api/auth/login/", {
         email,
         password,
       });
-
-      setIsSubmitting(false);
-
-
       const response = await api.get("/api/user/me");
       useUserStore.getState().setUser(response.data);
 
@@ -50,11 +40,13 @@ export default function LoginPage() {
 
       await router.push(nextPath);
     } catch (error) {
-      if (error) {
+      if (error instanceof Error) {
         setErrorMessage(error.message);
-        return;
+      } else {
+        setErrorMessage("Unable to sign in.");
       }
-
+    } finally {
+      setIsSubmitting(false);
     }
   }
 

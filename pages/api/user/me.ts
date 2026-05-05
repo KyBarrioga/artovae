@@ -5,6 +5,8 @@ const apiClient = axios.create({
   baseURL: process.env.PICSAL_API_URL ?? "http://127.0.0.1:8000/api/",
   withCredentials: true,
 });
+const IAT_RETRY_DELAY_MS = 1200;
+const IAT_RETRY_ATTEMPTS = 2;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
@@ -40,12 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 async function fetchUserMeWithRefresh(cookieHeader: string) {
   try {
-    return await apiClient.get("user/me/", {
-      headers: {
-        Cookie: cookieHeader,
-      },
-      withCredentials: true,
-    });
+    return await fetchUserMeWithIatRetry(cookieHeader);
   } catch (error) {
     if (!axios.isAxiosError(error) || !error.response) {
       throw error;
@@ -77,12 +74,7 @@ async function fetchUserMeWithRefresh(cookieHeader: string) {
       refreshResponse.headers["set-cookie"]
     );
 
-    const userMeResponse = await apiClient.get("user/me/", {
-      headers: {
-        Cookie: refreshedCookieHeader,
-      },
-      withCredentials: true,
-    });
+    const userMeResponse = await fetchUserMeWithIatRetry(refreshedCookieHeader);
 
     userMeResponse.headers["set-cookie"] = [
       ...normalizeSetCookieHeaders(refreshResponse.headers["set-cookie"]),
@@ -93,12 +85,50 @@ async function fetchUserMeWithRefresh(cookieHeader: string) {
   }
 }
 
+async function fetchUserMeWithIatRetry(cookieHeader: string, retries = IAT_RETRY_ATTEMPTS) {
+  try {
+    return await apiClient.get("user/me/", {
+      headers: buildAuthHeaders(cookieHeader),
+      withCredentials: true,
+    });
+  } catch (error) {
+    if (!shouldRetryForIat(error) || retries <= 0) {
+      throw error;
+    }
+
+    await delay(IAT_RETRY_DELAY_MS);
+    return fetchUserMeWithIatRetry(cookieHeader, retries - 1);
+  }
+}
+
+function buildAuthHeaders(cookieHeader: string) {
+  const accessToken = getCookieValue(cookieHeader, "picsal_access_token");
+
+  return {
+    Cookie: cookieHeader,
+    ...(accessToken
+      ? {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      : {}),
+  };
+}
+
 function extractErrorDetail(data: unknown) {
   if (data && typeof data === "object" && "detail" in data && typeof data.detail === "string") {
     return data.detail;
   }
 
   return "";
+}
+
+function shouldRetryForIat(error: unknown) {
+  if (!axios.isAxiosError(error) || !error.response) {
+    return false;
+  }
+
+  const detail = extractErrorDetail(error.response.data).toLowerCase();
+  return detail.includes("not yet valid") && detail.includes("(iat)");
 }
 
 function forwardSetCookieHeaders(
@@ -158,4 +188,29 @@ function mergeCookieHeaders(
   return Array.from(cookieMap.entries())
     .map(([name, value]) => `${name}=${value}`)
     .join("; ");
+}
+
+function getCookieValue(cookieHeader: string, cookieName: string) {
+  for (const part of cookieHeader.split(";")) {
+    const trimmedPart = part.trim();
+    const separatorIndex = trimmedPart.indexOf("=");
+
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const name = trimmedPart.slice(0, separatorIndex).trim();
+
+    if (name !== cookieName) {
+      continue;
+    }
+
+    return trimmedPart.slice(separatorIndex + 1).trim();
+  }
+
+  return "";
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
