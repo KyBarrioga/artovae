@@ -12,6 +12,7 @@ type Profile = {
     created_at: string;
     description: string;
     display_name: string;
+    username: string;
     profile_picture: string | null;
     can_access: boolean;
 };

@@ -1,10 +1,12 @@
 import { SubmitEvent, useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import axios from "axios";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { api } from "lib/apiClient";
 import { hasCompletedProfileSetup } from "lib/profileSetup";
 import { useUserStore } from "store/useUserStore";
+import { toast } from "sonner";
 
 const artwork = "/static/img/login.jpg";
 
@@ -93,7 +95,6 @@ export default function SetupPage() {
     const normalizedDisplayName = displayName.trim();
     const nextPath = getNextPath(router.query.next);
 
-    console.log("normalizedDisplayName", normalizedDisplayName)
     if (!normalizedDisplayName) {
       setErrorMessage("Display name is required.");
       return;
@@ -103,10 +104,26 @@ export default function SetupPage() {
     setIsSubmitting(true);
 
     try {
-      await api.post("/api/auth/setup/", {
-        display_name: normalizedDisplayName
+      const response = await api.post("/api/auth/setup/", {
+        username: normalizedDisplayName
       });
+
+      const currentUser = useUserStore.getState().user;
+
+      if (currentUser && response.data?.profile) {
+        useUserStore.getState().setUser({
+          ...currentUser,
+          profile: {
+            ...currentUser.profile,
+            ...response.data.profile,
+          },
+        });
+}
+
       await router.push(nextPath);
+    } catch (error) {
+      const response = error.response.data
+      toast.error(response.username[0]);
     } finally {
       setIsSubmitting(false);
     }

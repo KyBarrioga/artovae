@@ -13,23 +13,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const cookieHeader = req.headers.cookie;
-  const displayName =
-    typeof req.body?.display_name === "string" ? req.body.display_name.trim() : "";
+  const username =
+    typeof req.body?.username === "string" ? req.body.username.trim() : "";
 
   if (!cookieHeader) {
     res.status(401).json({ error: "Missing auth cookie." });
     return;
   }
 
-  if (!displayName) {
+  if (!username) {
     res.status(422).json({ error: "Display name is required." });
     return;
   }
 
   try {
     const response = await apiClient.patch(
-      "auth/setup/",
-      { display_name: displayName },
+      "user/setup/",
+      { username: username },
       {
         headers: {
           Cookie: cookieHeader,

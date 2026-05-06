@@ -33,11 +33,10 @@ export default function ProfileHeader() {
     const profileImage = user?.profile.profile_picture || DEFAULT_PROFILE_IMAGE;
     const displayName =
         user?.profile.display_name?.trim() ||
-        user?.auth_user.display_name?.trim() ||
-        user?.auth_user.email ||
+        user?.profile.username?.trim() ||
         "";
     const email = user?.auth_user.email || "";
-    const handle = email ? `@${email.split("@")[0].toLowerCase()}` : "";
+    const username = user?.profile.username?.trim() || "";
     const description = user?.profile.description?.trim() || "";
     const joinedLabel = user?.profile.created_at
         ? new Date(user.profile.created_at).toLocaleDateString("en-US", {
@@ -108,8 +107,8 @@ export default function ProfileHeader() {
                     <h1 className="text-[15px] font-semibold leading-tight text-stone-50 sm:text-[24px]">
                         {displayName || (isProfileLoading ? <Skeleton className="mt-[10px] h-[30px] w-[150px] rounded-full mx-auto sm:mx-0" /> : "")}
                     </h1>
-                    {handle ? (
-                        <p className="mt-1 text-sm text-stone-500 sm:text-base">{handle}</p>
+                    {username ? (
+                        <p className="mt-1 text-sm text-stone-500 sm:text-base">{'@' + username}</p>
                     ) : null}
 
                     {(description || email || joinedLabel) ? (
