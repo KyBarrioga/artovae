@@ -17,6 +17,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { toast } from "sonner";
 import Header from "layouts/header";
 import { useUserStore } from "store/useUserStore";
 import ProfileHeader from "@/components/profile/profile-header";
@@ -32,6 +33,8 @@ type GridItem = {
   id: string;
   src: string;
 };
+
+type UserTab = "posts" | "portfolio";
 
 // function resolveImageSource(value: string) {
 //   if (/^https?:\/\/imgur\.com\//i.test(value)) {
@@ -122,6 +125,7 @@ export default function UserPage() {
   const user = useUserStore((state) => state.user);
   const [items, setItems] = useState<GridItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState<UserTab>("posts");
   const { data: media = [] } = useUserMedia();
 
   const sensors = useSensors(
@@ -214,6 +218,11 @@ export default function UserPage() {
     setActiveId(null);
   }
 
+  function handleSelectPortfolio() {
+    setSelectedTab("portfolio");
+    toast.warning("Unavailable, Portfolio feature still in progress.");
+  }
+
   return (
     <main>
       <Header />
@@ -225,11 +234,24 @@ export default function UserPage() {
               <div className="mt-10 flex items-center justify-center gap-10 text-sm text-stone-500 sm:gap-16 sm:text-base">
                 <button
                   type="button"
-                  className="border-b-2 border-stone-100 px-1 pb-3 font-medium text-stone-100"
+                  onClick={() => setSelectedTab("posts")}
+                  className={`px-1 pb-3 transition ${
+                    selectedTab === "posts"
+                      ? "border-b-2 border-stone-100 font-medium text-stone-100"
+                      : "text-stone-500 hover:text-stone-300"
+                  }`}
                 >
                   Posts
                 </button>
-                <button type="button" className="px-1 pb-3 transition hover:text-stone-300" >
+                <button
+                  type="button"
+                  onClick={handleSelectPortfolio}
+                  className={`px-1 pb-3 transition ${
+                    selectedTab === "portfolio"
+                      ? "border-b-2 border-stone-100 font-medium text-stone-100"
+                      : "text-stone-500 hover:text-stone-300"
+                  }`}
+                >
                   Portfolio
                 </button>
               </div>
