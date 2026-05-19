@@ -20,11 +20,12 @@ export default async function PostImageDetails(req: NextApiRequest, res: NextApi
     return;
   }
 
-  const authorizationHeader = req.headers.authorization;
+  const cookieHeader = req.headers.cookie;
+  const accessToken = req.cookies["picsal_access_token"];
   const contentType = req.headers["content-type"];
 
-  if (!authorizationHeader?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Missing bearer token." });
+  if (!accessToken) {
+    res.status(401).json({ error: "Missing access token cookie." });
     return;
   }
 
@@ -39,7 +40,8 @@ export default async function PostImageDetails(req: NextApiRequest, res: NextApi
       req,
       {
         headers: {
-          Authorization: authorizationHeader,
+          Authorization: `Bearer ${accessToken}`,
+          ...(cookieHeader ? { Cookie: cookieHeader } : {}),
           "Content-Type": contentType,
           ...(req.headers["content-length"]
             ? { "Content-Length": req.headers["content-length"] }
